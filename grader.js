@@ -20,12 +20,17 @@ References:
    - https://developer.mozilla.org/en-US/docs/JSON
    - https://developer.mozilla.org/en-US/docs/JSON#JSON_in_Firefox_2
 */
-
+var sys = require('util');
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var rest = require('../hw2/node_modules/restler');
+
+
+
+/*sys.puts(html_str);*/
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -36,16 +41,26 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
-var cheerioHtmlFile = function(htmlfile) {
+var cheerioHtmlFile = function(htmlfile, flag) {
+    if(flag == 0)
     return cheerio.load(fs.readFileSync(htmlfile));
+    else
+	return cheerio.load(htmlfile);
+};
+
+var cheerioString = function(htmlstring) {
+    return cheerio.load(htmlstring);
 };
 
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtmlFile = function(htmlfile, checksfile, flag) {
+    if(flag == 0){
+    $ = cheerioHtmlFile(htmlfile,0);
+	}
+    else {newres = rest.get(htmlfile).on('complete', function(result) {return result;}); $ = cheerioHtmlFile(newres,1); }
     var checks = loadChecks(checksfile).sort();
     var out = {};
     for(var ii in checks) {
@@ -64,9 +79,15 @@ var clone = function(fn) {
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists))
+	.option('-u, --url <url>', 'Url of the file')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+    if(program.file) {
+    var checkJson = checkHtmlFile(program.file, program.checks, 0);
+    }
+    if(program.url) {
+	var checkJson = checkHtmlFile(program.url, program.checks, 1);
+}
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
 } else {
